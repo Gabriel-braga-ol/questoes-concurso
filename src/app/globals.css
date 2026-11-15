@@ -1,26 +1,188 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+@theme {
+  --color-paper: #faf9f7;
+  --color-surface: #ffffff;
+  --color-ink: #1c1917;
+  --color-muted: #78716c;
+  --color-line: #e7e5e4;
+  --color-brand: #4f46e5;
+  --color-brand-dark: #3730a3;
+  --color-brand-soft: #eef2ff;
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  scroll-behavior: smooth;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: #ddd6fe;
+}
+
+/* ------------------------------------------------------------------ */
+/* texto das questões                                                  */
+/* ------------------------------------------------------------------ */
+
+.question-text {
+  font-size: 0.975rem;
+  line-height: 1.75;
+  color: #292524;
+}
+
+.question-text p {
+  margin-block: 0.75rem;
+}
+
+.question-text strong {
+  font-weight: 600;
+  color: var(--color-ink);
+}
+
+.question-text em {
+  font-style: italic;
+}
+
+.question-text a {
+  color: var(--color-brand-dark);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.question-text ul,
+.question-text ol {
+  margin-block: 0.75rem;
+  padding-left: 1.35rem;
+  list-style: disc;
+}
+
+.question-text ol {
+  list-style: decimal;
+}
+
+.question-text li {
+  margin-block: 0.25rem;
+}
+
+.question-text img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin-block: 1rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--color-line);
+  background: #fff;
+}
+
+.question-text blockquote {
+  border-left: 3px solid var(--color-line);
+  padding-left: 1rem;
+  color: var(--color-muted);
+  margin-block: 0.75rem;
+}
+
+.question-text hr {
+  border: 0;
+  border-top: 1px solid var(--color-line);
+  margin-block: 1.25rem;
+}
+
+.question-text table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-block: 1rem;
+  font-size: 0.9rem;
+}
+
+.question-text th,
+.question-text td {
+  border: 1px solid var(--color-line);
+  padding: 0.4rem 0.6rem;
+  text-align: left;
+}
+
+/* ------------------------------------------------------------------ */
+/* camada de desenho (Excalidraw por cima do enunciado)                */
+/* ------------------------------------------------------------------ */
+
+/*
+ * O canvas precisa ser transparente para o texto da questão aparecer
+ * por baixo. O resto é reduzir a interface ao essencial: aqui o usuário
+ * quer caneta, forma geométrica e borracha, não um quadro branco.
+ */
+.drawing-layer .excalidraw {
+  --default-bg-color: transparent;
+  background: transparent !important;
+}
+
+.drawing-layer .excalidraw canvas {
+  background: transparent !important;
+}
+
+.drawing-layer .excalidraw .layer-ui__wrapper__top-right {
+  display: none !important;
+}
+
+/* dica de "segure a roda do mouse" atrapalha quem só quer riscar */
+.drawing-layer .excalidraw .HintViewer {
+  display: none !important;
+}
+
+/* o botão flutuante da questão não deve aparecer atrás da prancheta */
+body:has(.drawing-layer) [data-floating-action] {
+  display: none !important;
+}
+
+/*
+ * O cabeçalho do site continua visível por baixo do canvas transparente e
+ * aparece nas frestas entre os botões da prancheta. Enquanto o desenho está
+ * aberto ele não serve para nada (a camada intercepta todos os cliques),
+ * então some — sem `display: none` para a página não pular.
+ */
+body:has(.drawing-layer) > header {
+  visibility: hidden;
+}
+
+.drawing-layer .excalidraw .App-menu_top__left .dropdown-menu-button,
+.drawing-layer .excalidraw .help-icon {
+  display: none !important;
+}
+
+/* esconde o fundo quadriculado do grid quando ele é desativado */
+.drawing-layer .excalidraw .grid-background {
+  display: none;
+}
+
+/*
+ * No celular o painel de propriedades (cor, espessura) ocupa metade da
+ * tela depois do primeiro traço. O padrão já é caneta vermelha fina, então
+ * esconder o painel custa pouco e devolve a tela para o enunciado.
+ */
+@media (max-width: 640px) {
+  .drawing-layer .excalidraw .App-menu__left {
+    display: none !important;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* barra de rolagem discreta                                           */
+/* ------------------------------------------------------------------ */
+
+.scroll-thin {
+  scrollbar-width: thin;
+  scrollbar-color: #d6d3d1 transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
 }

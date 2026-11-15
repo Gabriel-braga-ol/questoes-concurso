@@ -1,0 +1,27 @@
+{
+  "generatedAt": "2026-11-15T03:08:41.048Z",
+  "source": "api.enem.dev (dados oficiais do INEP)",
+  "years": [
+    2019,
+    2020,
+    2021,
+    2022,
+    2023
+  ],
+  "total": 891,
+  "bySubject": {
+    "Espanhol": 24,
+    "Português": 165,
+    "Literatura": 25,
+    "Ciências Humanas": 86,
+    "Geografia": 53,
+    "História": 23,
+    "Sociologia": 68,
+    "Filosofia": 30,
+    "Biologia": 45,
+    "Ciências da Natureza": 37,
+    "Física": 74,
+    "Química": 46,
+    "Matemática": 215
+  }
+}
