@@ -17,10 +17,9 @@ Projeto gratuito, sem fins comerciais. Hoje o acervo cobre o **ENEM de 2019 a
 
 ## Como rodar
 
-O `package.json` **não declara o campo `engines`** — ele precisa ser adicionado.
-Na prática, o mínimo é **Node 20.11 ou superior**: o script de ingestão usa
-`import.meta.dirname`, disponível a partir dessa versão, e o Next 16 exige
-`>= 20.9`.
+O mínimo é **Node 20.11 ou superior** (`engines` no `package.json`): o script de
+ingestão usa `import.meta.dirname`, disponível a partir dessa versão, e o Next 16
+exige `>= 20.9`.
 
 ```bash
 npm install
@@ -69,6 +68,11 @@ O export estático do Next não gera alguns payloads de prefetch de rota
 (`__next.*.__PAGE__.txt`): o navegador registra 404 no console e a navegação cai
 para carregamento normal da página. Funciona, mas é o motivo daqueles 404.
 
+Para indexação, o build gera `sitemap.xml` (home, `/sobre` e as 914 questões) e
+`robots.txt`. O `robots.txt` só vale na raiz do domínio, então em
+`/questoes-concurso/robots.txt` ele é mais documentação do que regra — o sitemap é
+o que deve ser enviado no **Google Search Console** depois do primeiro deploy.
+
 ## Estrutura e fluxo dos dados
 
 ```
@@ -92,6 +96,8 @@ src/
     page.tsx          home com filtros
     questao/[id]/     página da questão, gerada no build
     sobre/            fontes, direitos e limitações
+    sitemap.ts        sitemap.xml gerado a partir do catálogo
+    robots.ts         robots.txt apontando o sitemap
   components/
     QuestionExplorer  filtros, busca e lista (client-side)
     QuestionView      enunciado, alternativas e gabarito
