@@ -31,6 +31,11 @@ jobs:
       - run: npm run build
 
       - uses: actions/configure-pages@v5
+        with:
+          # tenta habilitar o Pages na primeira execução; se o token não puder,
+          # o passo falha e o ajuste é manual (Settings → Pages → Source:
+          # GitHub Actions)
+          enablement: true
 
       - uses: actions/upload-pages-artifact@v3
         with:
