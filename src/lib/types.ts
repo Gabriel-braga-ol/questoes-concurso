@@ -19,6 +19,8 @@ export type Question = {
   areaLabel: string;
   subject: string;
   topic: string;
+  /** procedência da classificação (ex.: "regras@v1", "modelo@versão/prompt-v3") */
+  classifiedBy?: string;
   language: string | null;
   context: string;
   stem: string;

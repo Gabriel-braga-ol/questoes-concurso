@@ -6,20 +6,33 @@
  *   node scripts/ingest-enem.mjs 2020 2021 2022  # anos específicos
  *
  * O que ele faz:
- *   1. baixa todas as questões de cada ano (a API limita 50 por página)
+ *   1. baixa todas as questões de cada ano em dois idiomas (a API limita 50 por
+ *      página e só devolve inglês quando pedimos `language=ingles`)
  *   2. baixa as imagens para public/img/enem/<ano>/ (nada de hotlink)
  *   3. classifica matéria/assunto (ver scripts/topics.mjs)
- *   4. gera src/data/questions.json (completo) e src/data/catalog.json (lista enxuta)
+ *   4. gera src/data/questions.json (completo), catalog.json (lista enxuta),
+ *      meta.json (totais) e ingest-report.json (o que foi descartado e por quê)
  */
 
 import { createHash } from "node:crypto";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { classify } from "./topics.mjs";
 
 const API = "https://api.enem.dev/v1";
 const DEFAULT_YEARS = [2019, 2020, 2021, 2022, 2023];
 const PAGE_SIZE = 50;
+
+/**
+ * As questões 1 a 5 do ENEM existem em duas versões, inglês e espanhol, com a
+ * MESMA numeração. A API devolve só uma por consulta: sem filtro vem espanhol,
+ * com `language=ingles` vem inglês. Sem as duas passadas o acervo fica sem
+ * inglês e o id fica ambíguo, por isso o idioma entra no id.
+ */
+const LANGUAGES = [null, "ingles"];
+
+/** versão da classificação por regras; a passada por LLM grava a dela */
+const CLASSIFIER_VERSION = "regras@v1";
 
 const ROOT = path.resolve(import.meta.dirname, "..");
 const DATA_DIR = path.join(ROOT, "src", "data");
@@ -30,28 +43,75 @@ const targetYears = years.length ? years : DEFAULT_YEARS;
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+/**
+ * A API é pública e sem chave, e responde 429 com `Retry-After` — às vezes
+ * pedindo mais de uma hora. Obedecer isso travava a CLI por 80 minutos, então
+ * o pedido da API é tratado como sugestão com teto. Também há teto de tempo por
+ * requisição: uma conexão pendurada não pode congelar a ingestão.
+ */
+const MAX_BACKOFF_MS = 60_000;
+const REQUEST_TIMEOUT_MS = 20_000;
+
 async function fetchJson(url, attempt = 1) {
   try {
-    const res = await fetch(url, { headers: { accept: "application/json" } });
+    const res = await fetch(url, {
+      headers: { accept: "application/json" },
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+    });
+
+    if (res.status === 429 && attempt < 4) {
+      const retryAfter = Number(res.headers.get("retry-after"));
+      const suggested = Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter * 1000 : 0;
+      const wait = Math.min(suggested || 15_000 * attempt, MAX_BACKOFF_MS);
+      console.warn(`  · limite da API, esperando ${Math.round(wait / 1000)}s`);
+      await sleep(wait);
+      return fetchJson(url, attempt + 1);
+    }
+
     if (!res.ok) throw new Error(`HTTP ${res.status} em ${url}`);
     return await res.json();
   } catch (err) {
-    if (attempt >= 3) throw err;
-    await sleep(400 * attempt);
+    if (attempt >= 5) throw err;
+    console.warn(`  · falha de rede (${err.message}), tentando de novo`);
+    await sleep(1000 * attempt);
     return fetchJson(url, attempt + 1);
   }
 }
 
-async function fetchQuestions(year) {
+async function fetchQuestions(year, language) {
   const all = [];
   for (let offset = 0; ; offset += PAGE_SIZE) {
-    const page = await fetchJson(
-      `${API}/exams/${year}/questions?limit=${PAGE_SIZE}&offset=${offset}`,
-    );
+    const query = `limit=${PAGE_SIZE}&offset=${offset}` + (language ? `&language=${language}` : "");
+    const page = await fetchJson(`${API}/exams/${year}/questions?${query}`);
     all.push(...page.questions);
     if (!page.metadata?.hasMore) break;
+    await sleep(400);
   }
   return all;
+}
+
+/** chave de unicidade: o mesmo número existe em dois idiomas */
+function languageKey(language) {
+  return language ?? "sem-idioma";
+}
+
+function questionId(year, index, language) {
+  const suffix = language === "ingles" ? "-en" : language === "espanhol" ? "-es" : "";
+  return `enem-${year}-${index}${suffix}`;
+}
+
+/**
+ * Assinatura do conteúdo. Serve para o caso em que a API devolve a mesma
+ * questão nas duas passadas de idioma (2020/5 vem em espanhol até quando
+ * pedimos inglês): sem isso o acervo ganha uma cópia com id diferente.
+ */
+function contentFingerprint(question) {
+  const text = [
+    question.context,
+    question.stem,
+    ...question.alternatives.map((alternative) => `${alternative.letter}${alternative.text}`),
+  ].join("\n");
+  return createHash("sha1").update(text).digest("hex");
 }
 
 /* ------------------------------------------------------------------ */
@@ -59,6 +119,18 @@ async function fetchQuestions(year) {
 /* ------------------------------------------------------------------ */
 
 const imageCache = new Map();
+/** nomes já baixados por ano: reingestão não rebaixa 33 MB de imagens */
+const imageFiles = new Map();
+
+async function imagesOf(year) {
+  const key = String(year);
+  if (!imageFiles.has(key)) {
+    const dir = path.join(IMG_ROOT, key);
+    const names = await readdir(dir).catch(() => []);
+    imageFiles.set(key, new Set(names));
+  }
+  return imageFiles.get(key);
+}
 
 const EXT_BY_TYPE = {
   "image/png": ".png",
@@ -77,17 +149,23 @@ async function localizeImage(url, year) {
   if (imageCache.has(url)) return imageCache.get(url);
 
   const promise = (async () => {
+    const base = createHash("sha1").update(url).digest("hex").slice(0, 12);
+    const files = await imagesOf(year);
+    const cached = [...files].find((name) => name.startsWith(`${base}.`));
+    if (cached) return `/img/enem/${year}/${cached}`;
+
     for (let attempt = 1; attempt <= 3; attempt++) {
       try {
         const res = await fetch(url);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const type = (res.headers.get("content-type") ?? "").split(";")[0].trim();
         const ext = EXT_BY_TYPE[type] ?? path.extname(new URL(url).pathname) ?? ".png";
-        const name = createHash("sha1").update(url).digest("hex").slice(0, 12) + ext;
+        const name = base + ext;
         const dir = path.join(IMG_ROOT, String(year));
         await mkdir(dir, { recursive: true });
         const buf = Buffer.from(await res.arrayBuffer());
         await writeFile(path.join(dir, name), buf);
+        files.add(name);
         return `/img/enem/${year}/${name}`;
       } catch (err) {
         if (attempt === 3) {
@@ -151,9 +229,9 @@ function toPreview(text, max = 170) {
   return clean.length > max ? clean.slice(0, max).trimEnd() + "…" : clean;
 }
 
-async function normalizeQuestion(raw) {
+async function normalizeQuestion(raw, language) {
   const year = raw.year;
-  const id = `enem-${year}-${raw.index}`;
+  const id = questionId(year, raw.index, language);
 
   const context = await rewriteMarkdownImages(raw.context ?? "", year);
   const stem = await rewriteMarkdownImages(raw.alternativesIntroduction ?? "", year);
@@ -181,7 +259,7 @@ async function normalizeQuestion(raw) {
   const plainContext = stripMarkdown(context);
   const classification = classify({
     area: raw.discipline,
-    language: raw.language ?? null,
+    language,
     stem: plainStem,
     context: plainContext,
     alternatives: alternatives.map((a) => stripMarkdown(a.text)),
@@ -197,7 +275,9 @@ async function normalizeQuestion(raw) {
       areaLabel: AREA_LABEL[raw.discipline] ?? raw.discipline,
       subject: classification.subject,
       topic: classification.topic,
-      language: raw.language ?? null,
+      /** procedência da classificação: permite reprocessar sem adivinhar */
+      classifiedBy: CLASSIFIER_VERSION,
+      language,
       context,
       stem,
       images,
@@ -214,7 +294,7 @@ async function normalizeQuestion(raw) {
       areaLabel: AREA_LABEL[raw.discipline] ?? raw.discipline,
       subject: classification.subject,
       topic: classification.topic,
-      language: raw.language ?? null,
+      language,
       preview: toPreview(plainStem || plainContext),
       hasImage: /!\[/.test(context) || images.length > 0 || alternatives.some((a) => a.image),
     },
@@ -227,35 +307,93 @@ async function normalizeQuestion(raw) {
 
 const questions = [];
 const catalog = [];
-const seen = new Set();
-const stats = { downloaded: 0, skippedDuplicates: 0, skippedInvalid: 0 };
+const collected = new Set();
+const contents = new Set();
+const skipped = [];
+const missingByYear = {};
+/** itens que vêm em toda passada (6-180) e não são erro nem descarte */
+const stats = { repeatedAcrossPasses: 0 };
+
+/**
+ * O idioma das questões 1-5 vem do campo `language` — menos em 2020, que
+ * devolve `null` nas duas versões. Como a passada já diz qual edição foi
+ * pedida, ela é a fonte da verdade para essas cinco.
+ */
+function resolveLanguage(item, passLanguage) {
+  if (item.language) return item.language;
+  return item.index <= 5 ? (passLanguage ?? "espanhol") : null;
+}
+
+/** descarta a questão e registra o motivo: sem isso o acervo tem buracos mudos */
+function skip(year, item, language, reason) {
+  skipped.push({
+    id: questionId(year, item.index, language),
+    year,
+    index: item.index,
+    language,
+    reason,
+  });
+}
 
 for (const year of targetYears) {
-  process.stdout.write(`ENEM ${year}: baixando... `);
-  const raw = await fetchQuestions(year);
-  console.log(`${raw.length} questões`);
+  const yearSeen = [];
 
-  for (const item of raw) {
-    const id = `enem-${item.year}-${item.index}`;
-    if (seen.has(id)) {
-      stats.skippedDuplicates++;
-      continue;
-    }
-    seen.add(id);
+  for (const passLanguage of LANGUAGES) {
+    process.stdout.write(
+      `ENEM ${year}${passLanguage ? ` (${passLanguage})` : ""}: baixando... `,
+    );
+    const raw = await fetchQuestions(year, passLanguage);
+    console.log(`${raw.length} questões`);
 
-    try {
-      const entry = await normalizeQuestion(item);
-      if (!entry) {
-        stats.skippedInvalid++;
+    const inPass = new Set();
+
+    for (const item of raw) {
+      const language = resolveLanguage(item, passLanguage);
+      const key = `${year}-${item.index}-${languageKey(language)}`;
+
+      // a API repete um item no fim de uma página e no começo da seguinte
+      if (inPass.has(key)) {
+        skip(year, item, language, "repetida-na-api");
         continue;
       }
-      questions.push(entry.question);
-      catalog.push(entry.catalog);
-      stats.downloaded++;
-    } catch (err) {
-      stats.skippedInvalid++;
-      console.warn(`  ! questão ${item.year}/${item.index}: ${err.message}`);
+      inPass.add(key);
+
+      // itens sem idioma (6-180) vêm nas duas passadas: já foram coletados
+      if (collected.has(key)) {
+        stats.repeatedAcrossPasses++;
+        continue;
+      }
+      collected.add(key);
+
+      try {
+        const entry = await normalizeQuestion(item, language);
+        if (!entry) {
+          skip(year, item, language, "sem-alternativas-suficientes");
+          continue;
+        }
+
+        const fingerprint = `${year}-${item.index}-${contentFingerprint(entry.question)}`;
+        if (contents.has(fingerprint)) {
+          skip(year, item, language, "conteudo-repetido-entre-idiomas");
+          continue;
+        }
+        contents.add(fingerprint);
+
+        questions.push(entry.question);
+        catalog.push(entry.catalog);
+        yearSeen.push(item.index);
+      } catch (err) {
+        skip(year, item, language, `erro: ${err.message}`);
+        console.warn(`  ! questão ${year}/${item.index}: ${err.message}`);
+      }
     }
+  }
+
+  // o enunciado do ENEM tem 180 questões; o que não veio da API não é bug nosso
+  const presentes = new Set(yearSeen);
+  missingByYear[year] = [];
+  for (let index = 1; index <= 180; index++) {
+    if (!presentes.has(index)) missingByYear[year].push(index);
   }
 }
 
@@ -269,18 +407,44 @@ await writeFile(path.join(DATA_DIR, "catalog.json"), JSON.stringify(catalog));
 const bySubject = {};
 for (const q of catalog) bySubject[q.subject] = (bySubject[q.subject] ?? 0) + 1;
 
+const byLanguage = {};
+for (const q of questions) {
+  const key = languageKey(q.language);
+  byLanguage[key] = (byLanguage[key] ?? 0) + 1;
+}
+
+const report = {
+  generatedAt: new Date().toISOString(),
+  years: [...targetYears].sort((a, b) => a - b),
+  downloaded: questions.length,
+  byLanguage,
+  /** questões 6-180 que vieram nas duas passadas: esperado, não é descarte */
+  repeatedAcrossPasses: stats.repeatedAcrossPasses,
+  skipped,
+  missingByYear,
+};
+await writeFile(
+  path.join(DATA_DIR, "ingest-report.json"),
+  JSON.stringify(report, null, 2),
+);
+
 const meta = {
   generatedAt: new Date().toISOString(),
   source: "api.enem.dev (dados oficiais do INEP)",
-  years: targetYears,
+  years: [...targetYears].sort((a, b) => a - b),
   total: questions.length,
   bySubject,
+  byLanguage,
 };
 await writeFile(path.join(DATA_DIR, "meta.json"), JSON.stringify(meta, null, 2));
 
 console.log("\n--- resumo ---");
-console.log(`questões gravadas: ${stats.downloaded}`);
-console.log(`duplicatas ignoradas: ${stats.skippedDuplicates}`);
-console.log(`inválidas ignoradas: ${stats.skippedInvalid}`);
+console.log(`questões gravadas: ${questions.length}`);
+console.log(`descartadas: ${skipped.length}`);
+for (const year of Object.keys(missingByYear)) {
+  const missing = missingByYear[year];
+  if (missing.length) console.log(`  ${year} sem questão na API: ${missing.join(", ")}`);
+}
+console.log("por idioma:", byLanguage);
 console.log("por matéria:", bySubject);
-console.log("arquivos: src/data/questions.json, src/data/catalog.json, src/data/meta.json");
+console.log("arquivos: src/data/{questions,catalog,meta,ingest-report}.json");
