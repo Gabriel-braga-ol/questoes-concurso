@@ -31,17 +31,43 @@ Outros comandos:
 
 ```bash
 npm run build        # export estático em out/
-npm run start        # serve out/ localmente (via npx serve)
+npm run start        # serve out/ em http://localhost:3000/questoes-concurso/
 npm run typecheck    # next typegen && tsc --noEmit
 npm run lint         # ESLint
 npm run ingest       # regenera o acervo do ENEM
 ```
 
 O build usa `output: "export"` e `trailingSlash: true`: o resultado é um conjunto
-de arquivos estáticos em `out/`, publicável em host estático (GitHub Pages,
-Cloudflare Pages, Netlify, S3…). Para publicar em subdiretório, é preciso
-configurar `basePath`. Não há backend, banco de dados nem chamada à API externa
-em tempo de execução.
+de arquivos estáticos em `out/`. Não há backend, banco de dados nem chamada à API
+externa em tempo de execução.
+
+## Publicação
+
+O site roda como *project page* do GitHub Pages, em
+**https://gabriel-braga-ol.github.io/questoes-concurso/**. Cada push na `main`
+dispara `.github/workflows/deploy.yml`, que roda `npm ci && npm run build` e
+publica `out/` com as actions oficiais do Pages.
+
+Como o Pages serve o repositório num subdiretório, o build de produção usa
+`basePath: "/questoes-concurso"` (`src/lib/site.ts`). O `next/link` aplica o
+prefixo sozinho; imagens e outros arquivos de `public/` passam por `assetPath()`,
+porque o Next não reescreve `src` de `<img>`. No `npm run dev` o prefixo é vazio,
+então o site fica em http://localhost:3000.
+
+Duas configurações fora do código:
+
+- **Settings → Pages → Source: GitHub Actions** (sem isso o job de deploy falha).
+- O repositório precisa ser público — Pages em repositório privado exige plano
+  pago.
+
+Para conferir o build antes de subir, `npm run build && npm run start` serve o
+`out/` no mesmo subdiretório que o Pages usa. Se um dia o site for para a raiz do
+domínio (domínio próprio ou *user page*), basta zerar `DEPLOY_BASE_PATH` em
+`src/lib/site.ts`.
+
+O export estático do Next não gera alguns payloads de prefetch de rota
+(`__next.*.__PAGE__.txt`): o navegador registra 404 no console e a navegação cai
+para carregamento normal da página. Funciona, mas é o motivo daqueles 404.
 
 ## Estrutura e fluxo dos dados
 
@@ -59,6 +85,7 @@ out/ (arquivos estáticos)
 scripts/
   ingest-enem.mjs     baixa as questões, salva imagens e gera os JSON
   topics.mjs          classificação de matéria/assunto por radicais
+  serve-out.mjs       serve out/ no subdiretório do Pages (npm run start)
 src/
   app/                rotas (App Router)
     layout.tsx        cabeçalho, rodapé e metadados
@@ -78,6 +105,7 @@ src/
   lib/
     catalog.ts        helpers de filtro, contagem e busca
     questions.ts      leitura das questões (server-only)
+    site.ts           endereço publicado, basePath e assetPath
     types.ts          tipos de questão, catálogo e metadados
 public/
   img/enem/<ano>/     imagens copiadas na ingestão
@@ -181,7 +209,7 @@ Nada é enviado para servidor: o desenho fica no navegador do usuário.
 O acervo atual tem 914 questões e o catálogo completo cabe em algumas centenas de
 KB de JSON. Importá-lo no cliente permite filtro e busca instantâneos, sem
 requisição, loading ou API. Sem backend também não há servidor para manter, banco
-para pagar nem superfície de autenticação; o deploy é só publicar `out/`. E o
+para pagar nem superfície de autenticação; o deploy é um push na `main`. E o
 desenho, que é o diferencial do produto, fica local por padrão.
 
 O custo é aceitar que o conteúdo é imutável entre builds e que a busca acontece
