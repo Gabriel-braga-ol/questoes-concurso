@@ -1,0 +1,37 @@
+{
+  "generatedAt": "2026-11-16T19:48:10.837Z",
+  "model": "gemini-3.5-flash-lite",
+  "promptVersion": "prompt-v1",
+  "lastRun": {
+    "requested": 1,
+    "classified": 1,
+    "changed": 1,
+    "areaChanged": 0,
+    "fallbacks": [],
+    "usage": {
+      "prompt": 1037,
+      "output": 46
+    }
+  },
+  "dataset": {
+    "total": 914,
+    "byClassifier": {
+      "gemini-3.5-flash-lite/prompt-v1": 914
+    },
+    "bySubject": {
+      "Espanhol": 25,
+      "Inglês": 23,
+      "Português": 151,
+      "Literatura": 37,
+      "História": 55,
+      "Geografia": 87,
+      "Sociologia": 60,
+      "Filosofia": 33,
+      "Biologia": 77,
+      "Física": 76,
+      "Química": 67,
+      "Matemática": 223
+    },
+    "fallbacks": []
+  }
+}
