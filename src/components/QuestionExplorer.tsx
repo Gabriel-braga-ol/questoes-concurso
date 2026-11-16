@@ -138,7 +138,7 @@ export function QuestionExplorer() {
       <section className="pt-12 pb-9 sm:pt-16">
         <p className="mb-3 inline-flex items-center gap-2 rounded-full border border-line bg-white px-3 py-1 text-[11px] font-medium tracking-wide text-muted uppercase">
           <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-          {meta.total} questões · ENEM {meta.years.at(-1)}–{meta.years[0]}
+          {meta.total} questões · ENEM {meta.years[0]}–{meta.years.at(-1)}
         </p>
         <h1 className="max-w-2xl text-[2rem] leading-[1.15] font-semibold tracking-tight sm:text-[2.6rem]">
           Escolha a questão.
