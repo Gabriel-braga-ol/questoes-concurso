@@ -1,0 +1,255 @@
+{
+  "generatedAt": "2026-11-16T02:59:29.839Z",
+  "years": [
+    2019,
+    2020,
+    2021,
+    2022,
+    2023
+  ],
+  "downloaded": 914,
+  "byLanguage": {
+    "espanhol": 25,
+    "ingles": 23,
+    "sem-idioma": 866
+  },
+  "repeatedAcrossPasses": 867,
+  "skipped": [
+    {
+      "id": "enem-2019-50",
+      "year": 2019,
+      "index": 50,
+      "language": null,
+      "reason": "repetida-na-api"
+    },
+    {
+      "id": "enem-2019-150",
+      "year": 2019,
+      "index": 150,
+      "language": null,
+      "reason": "repetida-na-api"
+    },
+    {
+      "id": "enem-2019-50",
+      "year": 2019,
+      "index": 50,
+      "language": null,
+      "reason": "repetida-na-api"
+    },
+    {
+      "id": "enem-2019-150",
+      "year": 2019,
+      "index": 150,
+      "language": null,
+      "reason": "repetida-na-api"
+    },
+    {
+      "id": "enem-2020-50",
+      "year": 2020,
+      "index": 50,
+      "language": null,
+      "reason": "repetida-na-api"
+    },
+    {
+      "id": "enem-2020-100",
+      "year": 2020,
+      "index": 100,
+      "language": null,
+      "reason": "repetida-na-api"
+    },
+    {
+      "id": "enem-2020-150",
+      "year": 2020,
+      "index": 150,
+      "language": null,
+      "reason": "repetida-na-api"
+    },
+    {
+      "id": "enem-2020-5-en",
+      "year": 2020,
+      "index": 5,
+      "language": "ingles",
+      "reason": "conteudo-repetido-entre-idiomas"
+    },
+    {
+      "id": "enem-2020-5-en",
+      "year": 2020,
+      "index": 5,
+      "language": "ingles",
+      "reason": "repetida-na-api"
+    },
+    {
+      "id": "enem-2020-50",
+      "year": 2020,
+      "index": 50,
+      "language": null,
+      "reason": "repetida-na-api"
+    },
+    {
+      "id": "enem-2020-100",
+      "year": 2020,
+      "index": 100,
+      "language": null,
+      "reason": "repetida-na-api"
+    },
+    {
+      "id": "enem-2020-150",
+      "year": 2020,
+      "index": 150,
+      "language": null,
+      "reason": "repetida-na-api"
+    },
+    {
+      "id": "enem-2021-50",
+      "year": 2021,
+      "index": 50,
+      "language": null,
+      "reason": "repetida-na-api"
+    },
+    {
+      "id": "enem-2021-100",
+      "year": 2021,
+      "index": 100,
+      "language": null,
+      "reason": "repetida-na-api"
+    },
+    {
+      "id": "enem-2021-150",
+      "year": 2021,
+      "index": 150,
+      "language": null,
+      "reason": "repetida-na-api"
+    },
+    {
+      "id": "enem-2021-50",
+      "year": 2021,
+      "index": 50,
+      "language": null,
+      "reason": "repetida-na-api"
+    },
+    {
+      "id": "enem-2021-100",
+      "year": 2021,
+      "index": 100,
+      "language": null,
+      "reason": "repetida-na-api"
+    },
+    {
+      "id": "enem-2021-150",
+      "year": 2021,
+      "index": 150,
+      "language": null,
+      "reason": "repetida-na-api"
+    },
+    {
+      "id": "enem-2022-50",
+      "year": 2022,
+      "index": 50,
+      "language": null,
+      "reason": "repetida-na-api"
+    },
+    {
+      "id": "enem-2022-100",
+      "year": 2022,
+      "index": 100,
+      "language": null,
+      "reason": "repetida-na-api"
+    },
+    {
+      "id": "enem-2022-150",
+      "year": 2022,
+      "index": 150,
+      "language": null,
+      "reason": "repetida-na-api"
+    },
+    {
+      "id": "enem-2022-50",
+      "year": 2022,
+      "index": 50,
+      "language": null,
+      "reason": "repetida-na-api"
+    },
+    {
+      "id": "enem-2022-100",
+      "year": 2022,
+      "index": 100,
+      "language": null,
+      "reason": "repetida-na-api"
+    },
+    {
+      "id": "enem-2022-150",
+      "year": 2022,
+      "index": 150,
+      "language": null,
+      "reason": "repetida-na-api"
+    },
+    {
+      "id": "enem-2023-50",
+      "year": 2023,
+      "index": 50,
+      "language": null,
+      "reason": "repetida-na-api"
+    },
+    {
+      "id": "enem-2023-100",
+      "year": 2023,
+      "index": 100,
+      "language": null,
+      "reason": "repetida-na-api"
+    },
+    {
+      "id": "enem-2023-132",
+      "year": 2023,
+      "index": 132,
+      "language": null,
+      "reason": "sem-alternativas-suficientes"
+    },
+    {
+      "id": "enem-2023-150",
+      "year": 2023,
+      "index": 150,
+      "language": null,
+      "reason": "repetida-na-api"
+    },
+    {
+      "id": "enem-2023-50",
+      "year": 2023,
+      "index": 50,
+      "language": null,
+      "reason": "repetida-na-api"
+    },
+    {
+      "id": "enem-2023-100",
+      "year": 2023,
+      "index": 100,
+      "language": null,
+      "reason": "repetida-na-api"
+    },
+    {
+      "id": "enem-2023-150",
+      "year": 2023,
+      "index": 150,
+      "language": null,
+      "reason": "repetida-na-api"
+    }
+  ],
+  "missingByYear": {
+    "2019": [
+      98,
+      100,
+      128
+    ],
+    "2020": [
+      144,
+      168,
+      179
+    ],
+    "2021": [],
+    "2022": [],
+    "2023": [
+      34,
+      132,
+      174
+    ]
+  }
+}

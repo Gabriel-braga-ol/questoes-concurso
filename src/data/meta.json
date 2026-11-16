@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-15T03:08:41.048Z",
+  "generatedAt": "2026-11-16T02:59:29.841Z",
   "source": "api.enem.dev (dados oficiais do INEP)",
   "years": [
     2019,
@@ -8,9 +8,10 @@
     2022,
     2023
   ],
-  "total": 891,
+  "total": 914,
   "bySubject": {
     "Espanhol": 24,
+    "Inglês": 23,
     "Português": 165,
     "Literatura": 25,
     "Ciências Humanas": 86,
@@ -23,5 +24,10 @@
     "Física": 74,
     "Química": 46,
     "Matemática": 215
+  },
+  "byLanguage": {
+    "espanhol": 25,
+    "ingles": 23,
+    "sem-idioma": 866
   }
 }
