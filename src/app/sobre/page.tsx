@@ -64,12 +64,14 @@ export default function AboutPage() {
           A fonte não informa o assunto: ela informa apenas a grande área
           (Matemática, Ciências da Natureza, etc.). A divisão em{" "}
           <em>Probabilidade</em>, <em>Funções</em>, <em>Termologia</em> é feita
-          por um classificador de palavras-chave, porque o vocabulário dessas
-          questões é razoavelmente previsível.
+          por um classificador automático, sempre dentro de uma lista fechada de
+          matérias e assuntos: primeiro por regras de palavras-chave, depois por
+          um modelo de linguagem que lê o enunciado e escolhe o que a questão
+          pede.
         </p>
         <p>
           Ele é útil, não é infalível. Questões multidisciplinares e de
-          interpretação costumam cair em <strong>Outros temas</strong>, que é
+          interpretação às vezes caem em <strong>Outros temas</strong>, que é
           onde ficam os casos em que o classificador preferiu não arriscar.
         </p>
 
@@ -88,6 +90,17 @@ export default function AboutPage() {
           , com lápis, formas geométricas, borracha e exportação em PNG. O
           desenho fica salvo no seu navegador, associado à questão — nada é
           enviado para servidor nenhum.
+        </p>
+
+        <h2 className="mt-8 mb-2 text-lg font-semibold text-ink">
+          Sobre o seu progresso
+        </h2>
+        <p>
+          As respostas também ficam no seu navegador: dá para ver quantas
+          questões já resolveu, o percentual de acerto, os dias seguidos
+          estudando e voltar só ao que errou. Não há conta nem sincronização —
+          limpar os dados do site ou trocar de aparelho recomeça do zero, a mesma
+          regra do desenho.
         </p>
 
         <h2 className="mt-8 mb-2 text-lg font-semibold text-ink">Contato</h2>
