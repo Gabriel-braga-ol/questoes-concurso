@@ -97,8 +97,12 @@ export default function ExcalidrawCanvas({
     return () => window.removeEventListener("keydown", onKeyDown, true);
   }, [onExit]);
 
-  // trava o scroll do documento enquanto a prancheta está aberta
+  /*
+    Trava a rolagem só enquanto a prancheta cobre a tela (abaixo de `lg`). A
+    partir daí ela é um painel ao lado e o enunciado precisa continuar rolando.
+  */
   useEffect(() => {
+    if (!window.matchMedia("(max-width: 1023px)").matches) return;
     const previous = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => {
@@ -157,13 +161,20 @@ export default function ExcalidrawCanvas({
   }, [api, storageKey]);
 
   return (
-    <div className="drawing-layer fixed inset-0 z-50">
+    /*
+      No celular e no tablet em pé a prancheta cobre a tela e fica transparente
+      sobre o texto — é a proposta original. A partir de `lg` ela vira um painel
+      à direita: o enunciado continua legível e rolável, sem fechar a prancheta
+      para ler o resto da questão.
+    */
+    <div className="drawing-layer fixed inset-0 z-50 lg:top-14 lg:left-auto lg:w-1/2 lg:border-l lg:border-line lg:bg-paper">
       {/*
         Controles próprios: o menu nativo do Excalidraw é escondido via CSS.
-        No celular eles vão para baixo, porque em cima colidiriam com a
-        barra de ferramentas do Excalidraw.
+        Eles ficam embaixo porque em cima a barra de ferramentas do Excalidraw
+        (~510px) chega perto da borda — num painel de metade da tela os dois
+        brigariam pelo mesmo canto.
       */}
-      <div className="pointer-events-none absolute inset-x-0 bottom-20 z-30 flex items-center justify-center gap-2 px-4 sm:inset-x-auto sm:top-3 sm:right-3 sm:bottom-auto sm:justify-end">
+      <div className="pointer-events-none absolute inset-x-0 bottom-20 z-30 flex items-center justify-center gap-2 px-4">
         <span className="pointer-events-none hidden rounded-md bg-ink/70 px-2 py-1 text-[11px] text-white sm:inline">
           {saved ? "Desenho salvo" : "Prancheta"}
         </span>

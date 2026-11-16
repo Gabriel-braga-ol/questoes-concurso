@@ -38,8 +38,16 @@ export function QuestionView({
 
   return (
     <>
-      <main className="mx-auto w-full max-w-3xl px-4 pt-8 pb-28 sm:px-6 sm:pt-10">
-        <nav
+      {/*
+        Com a prancheta aberta a partir de `lg` o texto cede a metade direita
+        para o painel de desenho. Abaixo disso o painel é sobreposto, então nada
+        muda.
+      */}
+      <main
+        className={`mx-auto w-full max-w-3xl px-4 pt-8 pb-28 sm:px-6 sm:pt-10 ${
+          drawing ? "lg:mr-[50%] lg:ml-0 lg:w-1/2" : ""
+        }`}
+      >        <nav
           aria-label="Trilha"
           className="mb-6 flex flex-wrap items-center gap-1.5 text-[12px] text-muted"
         >
@@ -248,6 +256,7 @@ export function QuestionView({
 
       {drawing ? (
         <DrawingBoard
+          key={question.id}
           storageKey={`myvest:drawing:v1:${question.id}`}
           onExit={() => setDrawing(false)}
         />

@@ -142,13 +142,16 @@ body:has(.drawing-layer) [data-floating-action] {
 }
 
 /*
- * O cabeçalho do site continua visível por baixo do canvas transparente e
- * aparece nas frestas entre os botões da prancheta. Enquanto o desenho está
- * aberto ele não serve para nada (a camada intercepta todos os cliques),
- * então some — sem `display: none` para a página não pular.
+ * Abaixo de `lg` a prancheta cobre a tela: o cabeçalho do site continua visível
+ * por baixo do canvas transparente e aparece nas frestas entre os botões.
+ * Enquanto o desenho está aberto ele não serve para nada (a camada intercepta
+ * todos os cliques), então some — sem `display: none` para a página não pular.
+ * A partir de `lg` o painel fica ao lado e o cabeçalho continua útil.
  */
-body:has(.drawing-layer) > header {
-  visibility: hidden;
+@media (max-width: 1023px) {
+  body:has(.drawing-layer) > header {
+    visibility: hidden;
+  }
 }
 
 .drawing-layer .excalidraw .App-menu_top__left .dropdown-menu-button,
@@ -162,11 +165,12 @@ body:has(.drawing-layer) > header {
 }
 
 /*
- * No celular o painel de propriedades (cor, espessura) ocupa metade da
- * tela depois do primeiro traço. O padrão já é caneta vermelha fina, então
- * esconder o painel custa pouco e devolve a tela para o enunciado.
+ * Enquanto a prancheta cobre a tela (abaixo de `lg`) o painel de propriedades
+ * (cor, espessura) abre por cima do enunciado depois do primeiro traço. O
+ * padrão já é caneta vermelha fina, então esconder o painel custa pouco e
+ * devolve o texto. No modo painel (`lg`) há espaço e ele continua disponível.
  */
-@media (max-width: 640px) {
+@media (max-width: 1023px) {
   .drawing-layer .excalidraw .App-menu__left {
     display: none !important;
   }
