@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import Link from "next/link";
+import { SITE_URL } from "@/lib/site";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -13,19 +14,34 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const DESCRIPTION =
+  "Questões de vestibular e concurso organizadas por matéria e assunto, com uma prancheta para resolver rabiscando em cima do enunciado.";
+
 export const metadata: Metadata = {
+  /**
+   * Sem isto o Next não consegue montar URL absoluta para metadados (link
+   * compartilhado, canonical) e o build avisa. É a URL publicada no Pages.
+   */
+  metadataBase: new URL(SITE_URL),
   title: {
     default: "MyVest — questões de vestibular para resolver rabiscando",
     template: "%s · MyVest",
   },
-  description:
-    "Questões de vestibular e concurso organizadas por matéria e assunto, com uma prancheta para resolver rabiscando em cima do enunciado.",
+  description: DESCRIPTION,
   keywords: [
     "questões de vestibular",
     "questões do ENEM",
     "resolver questões",
     "estudar para o vestibular",
   ],
+  openGraph: {
+    type: "website",
+    locale: "pt_BR",
+    siteName: "MyVest",
+    url: SITE_URL,
+    title: "MyVest — questões de vestibular para resolver rabiscando",
+    description: DESCRIPTION,
+  },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

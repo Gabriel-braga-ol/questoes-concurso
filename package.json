@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "npx --yes serve out",
+    "start": "node scripts/serve-out.mjs",
     "lint": "eslint",
     "typecheck": "next typegen && tsc --noEmit",
     "ingest": "node scripts/ingest-enem.mjs"

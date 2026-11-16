@@ -5,6 +5,7 @@ import { useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { UNCLASSIFIED } from "@/lib/catalog";
+import { assetPath } from "@/lib/site";
 import type { Question } from "@/lib/types";
 import { DrawingBoard } from "./DrawingBoard";
 
@@ -102,7 +103,7 @@ export function QuestionView({
                 .map((src) => (
                   <img
                     key={src}
-                    src={src}
+                    src={assetPath(src)}
                     alt="Imagem da questão"
                     className="max-w-full rounded-lg border border-line"
                     loading="lazy"
@@ -162,7 +163,7 @@ export function QuestionView({
                       ) : null}
                       {alternative.image ? (
                         <img
-                          src={alternative.image}
+                          src={assetPath(alternative.image)}
                           alt={`Alternativa ${alternative.letter}`}
                           className="mt-1 max-h-40 max-w-full rounded border border-line"
                           loading="lazy"
@@ -328,7 +329,11 @@ function Markdown({ children }: { children: string }) {
           </a>
         ),
         img: ({ src, alt }) => (
-          <img src={typeof src === "string" ? src : ""} alt={alt ?? ""} loading="lazy" />
+          <img
+            src={typeof src === "string" ? assetPath(src) : ""}
+            alt={alt ?? ""}
+            loading="lazy"
+          />
         ),
         table: ({ children: content }) => (
           <div className="scroll-thin overflow-x-auto">
