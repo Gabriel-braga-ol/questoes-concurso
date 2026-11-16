@@ -34,6 +34,7 @@ npm run start        # serve out/ em http://localhost:3000/questoes-concurso/
 npm run typecheck    # next typegen && tsc --noEmit
 npm run lint         # ESLint
 npm run ingest       # regenera o acervo do ENEM
+npm run classify     # classifica matéria/assunto com o Gemini
 ```
 
 O build usa `output: "export"` e `trailingSlash: true`: o resultado é um conjunto
@@ -88,7 +89,8 @@ out/ (arquivos estáticos)
 ```
 scripts/
   ingest-enem.mjs     baixa as questões, salva imagens e gera os JSON
-  topics.mjs          classificação de matéria/assunto por radicais
+  topics.mjs          taxonomia e classificação de matéria/assunto por radicais
+  classify-enem.mjs   reclassifica o acervo com o Gemini, em lote
   serve-out.mjs       serve out/ no subdiretório do Pages (npm run start)
 src/
   app/                rotas (App Router)
@@ -101,15 +103,20 @@ src/
   components/
     QuestionExplorer  filtros, busca e lista (client-side)
     QuestionView      enunciado, alternativas e gabarito
+    HistoryProgress   faixa de progresso da home
     DrawingBoard      carrega o Excalidraw só quando o usuário pede
     ExcalidrawCanvas  prancheta, persistência local, export PNG
+  hooks/
+    useAnswerHistory  estado do histórico local e sincronização entre abas
   data/
     questions.json    questões completas (lidas só no build)
     catalog.json      versão enxuta importada pela home
     meta.json         totais por matéria e anos
     ingest-report.json  o que ficou de fora da API e por quê
+    classify-report.json  resultado da última classificação por LLM
   lib/
     catalog.ts        helpers de filtro, contagem e busca
+    history.ts        registro de respostas, estatísticas e sequência
     questions.ts      leitura das questões (server-only)
     site.ts           endereço publicado, basePath e assetPath
     types.ts          tipos de questão, catálogo e metadados
@@ -117,12 +124,14 @@ public/
   img/enem/<ano>/     imagens copiadas na ingestão
 ```
 
-Os quatro arquivos de `src/data/` são gerados. `catalog.json` é a versão enxuta
+Os arquivos de `src/data/` são gerados. `catalog.json` é a versão enxuta
 (id, ano, matéria, assunto, prévia e flags) importada pelo cliente — é o que
 permite filtrar sem estado de loading. `questions.json` tem a questão completa e
 é lido com `fs` apenas no build, para não entrar no bundle do navegador.
-`meta.json` alimenta os totais exibidos na home e `ingest-report.json` registra as
-questões descartadas (com motivo) e os números que a API não devolveu.
+`meta.json` alimenta os totais exibidos na home, `ingest-report.json` registra as
+questões descartadas (com motivo) e os números que a API não devolveu, e
+`classify-report.json` guarda o que a última passada do LLM classificou, o que
+voltou para as regras e o consumo de tokens.
 
 ## Ingestão
 
@@ -175,18 +184,36 @@ que faltou.
 
 A API informa a grande área (`matematica`, `ciencias-natureza`,
 `ciencias-humanas`, `linguagens`) e, em alguns casos, o idioma. Matéria e assunto
-não vêm na fonte: a divisão em `Matemática > Probabilidade` é derivada em
-`scripts/topics.mjs` com regras de radicais (`probabilidad`,
-`funco`, `porcentag`…), porque a palavra aparece flexionada no enunciado.
+não vêm na fonte: a divisão em `Matemática > Probabilidade` é derivada.
 
-É heurística: acerta a maioria, erra questões interdisciplinares e manda os casos
-ambíguos para a área genérica (`Ciências Humanas`, `Ciências da Natureza`) e para
-**Outros temas** (`Geral`). A interface avisa isso. Cada questão grava a
-procedência em `classifiedBy` (hoje `regras@v1`), então dá para reprocessar só o
-que foi classificado por uma versão antiga. Para melhorar, o caminho é ajustar as
-listas em `topics.mjs` ou trocar `classify()` por um classificador de verdade
-(LLM com taxonomia fechada, mantendo as regras como reserva) — o resto do
-pipeline não muda.
+São duas passadas, e a segunda é opcional:
+
+1. **Regras** (`scripts/topics.mjs`), rodadas dentro da ingestão. Casam radicais
+   (`probabilidad`, `funco`, `porcentag`) porque a palavra aparece flexionada.
+   Gravam `classifiedBy: "regras@v1"`.
+2. **LLM** (`npm run classify`), sobre o acervo já baixado. O script manda lotes
+   de 20 questões para o Gemini com a taxonomia fechada e grava
+   `classifiedBy: "<modelo>/prompt-v1"`. Cada execução classifica só o que ainda
+   não tem a etiqueta do modelo; `--force` refaz tudo.
+
+As regras continuam sendo a reserva: se o modelo devolver matéria/assunto fora da
+taxonomia, esquecer um id ou a resposta vier ilegível, aquela questão volta para
+`regras@v1` e fica pendente para a próxima execução. Quando o modelo discorda da
+área da API com uma matéria válida, a área e o rótulo da questão também são
+corrigidos (a API às vezes marca Física como Ciências Humanas). O
+`classify-report.json` lista as questões que voltaram para as regras.
+
+A chave do Gemini vem de `GEMINI_API_KEY` no ambiente ou em `.env.local` (fora do
+repositório). Para revisar uma amostra sem gravar nada:
+
+```bash
+npm run classify -- --limit 30 --dry
+```
+
+O modelo padrão é `gemini-3.5-flash-lite`; `--model=...` troca. A etiqueta em
+`classifiedBy` permite reprocessar só o que foi classificado por uma versão
+antiga. O assunto continua sendo atalho de navegação, não verdade: a interface
+avisa que a classificação pode errar.
 
 ## Prancheta
 
@@ -207,6 +234,30 @@ O painel precisa de ~510 px para a barra de ferramentas do Excalidraw caber; por
 isso o corte é 1024 e não 768.
 
 Nada é enviado para servidor: o desenho fica no navegador do usuário.
+
+## Histórico de respostas
+
+Cada alternativa marcada é registrada no `localStorage` (`myvest:history:v1`):
+questão, alternativa, resultado (`acertou`, `errou` ou `revelou o gabarito`) e
+data/hora local. "Tentar de novo" acrescenta uma tentativa em vez de apagar a
+anterior, então a página mostra quantas vezes você já tentou.
+
+- **Na questão**: antes das alternativas, aparece “Você acertou em 12/11 · 2
+  tentativas” (ou “errou”/“revelou o gabarito”). Responder de novo está a um
+  clique.
+- **Na home**: a faixa de progresso mostra quantas das 914 questões já foram
+  respondidas, o percentual de acerto (na última tentativa de cada questão) e a
+  sequência de dias com pelo menos uma resposta.
+- **Filtros**: **Errei** reúne as questões cuja última tentativa não foi acerto
+  (inclui as que você revelou) e **Não respondidas** mostra o que falta. A lista
+  de erros vem do erro mais recente para o mais antigo.
+- **Sequência**: dias consecutivos com resposta, no fuso do navegador. Se hoje
+  ainda não houve resposta, a sequência de ontem continua valendo; ela zera
+  depois de um dia inteiro sem estudar.
+
+O histórico é só deste navegador e deste aparelho. Limpar os dados do site,
+usar anonimamente ou trocar de dispositivo perde tudo — a mesma limitação do
+desenho. Sincronizar exige conta e backend, que ficam para uma fase futura.
 
 ## Decisões de arquitetura
 
@@ -253,8 +304,9 @@ servem de base para o contrato.
   com `language=ingles`, então o acervo traz as duas versões (25 de espanhol e 23
   de inglês; 2019 não tem inglês da questão 5 e 2020 não devolve inglês na 5).
   A questão 5 de 2020 vem marcada como `ciencias-humanas` pela própria API.
-- Matéria e assunto são estimados por palavras-chave. Trate o assunto como atalho
-  de navegação, não como verdade.
+- Matéria e assunto vêm das regras ou do LLM, sempre dentro de uma taxonomia
+  fechada. A classificação melhora com o modelo, mas ainda pode errar questões
+  interdisciplinares: trate o assunto como atalho de navegação, não como verdade.
 - A busca cobre a prévia do enunciado e os metadados (matéria, assunto, ano,
   número), não o texto completo da questão.
 - Abaixo de 1024 px a prancheta cobre a tela e trava a rolagem do fundo. Em
@@ -264,6 +316,8 @@ servem de base para o contrato.
   continua livre.
 - O desenho fica só no `localStorage` do navegador. Limpar os dados do site ou
   trocar de dispositivo perde o desenho.
+- O histórico de respostas tem a mesma limitação: é local, sem conta e sem
+  sincronização entre aparelhos.
 - A página da questão é gerada no build: para atualizar o acervo é preciso rodar a
   ingestão e o build de novo.
 - As imagens são servidas como estão (`images.unoptimized: true`), sem otimização
@@ -272,8 +326,9 @@ servem de base para o contrato.
 ## Roadmap
 
 - Outros vestibulares: FUVEST, UNICAMP, CEDERJ e concursos.
-- Melhorar o classificador de matéria/assunto para reduzir os casos em "Outros
-  temas".
+- Revisar as questões que voltam para as regras em `classify-report.json` e
+  ajustar a taxonomia/prompt.
+- Sincronizar histórico e desenhos entre aparelhos (exige conta e backend).
 - API em C# e banco quando o acervo ou o uso justificarem, substituindo a leitura
   dos JSON.
 

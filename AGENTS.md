@@ -14,6 +14,8 @@ aqui e o que conta como pronto.
 - `npm run lint` — ESLint com a config do Next.
 - `npm run build` — export estático em `out/`.
 - `npm run ingest` — regenera o acervo do ENEM.
+- `npm run classify` — reclassifica matéria/assunto com o Gemini (usa
+  `GEMINI_API_KEY` de `.env.local`).
 - `npm run start` — serve `out/` localmente.
 
 Node mínimo: **20.11** (`import.meta.dirname` no script de ingestão). O
@@ -36,11 +38,13 @@ Para limitar a ingestão a alguns anos, use `npm run ingest -- 2022 2023`. Isso
 Não edite à mão:
 
 - `src/data/questions.json`, `src/data/catalog.json`, `src/data/meta.json`;
+- `src/data/classify-report.json` (resultado de `npm run classify`);
 - `public/img/enem/**`.
 
 Regenere com `npm run ingest` (ou `node scripts/ingest-enem.mjs <anos>`). A
 ingestão baixa da API, salva as imagens e classifica matéria/assunto em
-`scripts/topics.mjs`. Dados regenerados vão em commit próprio.
+`scripts/topics.mjs`; depois, `npm run classify` refina a classificação com o
+Gemini e regrava os mesmos JSON. Dados regenerados vão em commit próprio.
 
 ## Princípios
 
