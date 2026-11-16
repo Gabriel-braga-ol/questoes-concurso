@@ -12,7 +12,16 @@ import {
   topicCounts,
   topicLabel,
 } from "@/lib/catalog";
+import {
+  filterByHistory,
+  historyCounts,
+  historyStats,
+  sortByRecentReview,
+  type HistoryScope,
+} from "@/lib/history";
+import { useAnswerHistory } from "@/hooks/useAnswerHistory";
 import type { CatalogEntry } from "@/lib/types";
+import { HistoryProgress } from "./HistoryProgress";
 
 const PAGE = 40;
 
@@ -22,17 +31,24 @@ type Filters = {
   subject: string | null;
   topic: string | null;
   query: string;
+  scope: HistoryScope;
 };
+
+function isHistoryScope(value: string | null): value is Exclude<HistoryScope, "all"> {
+  return value === "wrong" || value === "unanswered";
+}
 
 function readFiltersFromUrl(): Filters {
   if (typeof window === "undefined") {
-    return { subject: null, topic: null, query: "" };
+    return { subject: null, topic: null, query: "", scope: "all" };
   }
   const params = new URLSearchParams(window.location.search);
+  const scope = params.get("f");
   return {
     subject: params.get("m"),
     topic: params.get("a"),
     query: params.get("q") ?? "",
+    scope: isHistoryScope(scope) ? scope : "all",
   };
 }
 
@@ -41,6 +57,7 @@ function filtersToSearch(filters: Filters): string {
   if (filters.subject) params.set("m", filters.subject);
   if (filters.topic) params.set("a", filters.topic);
   if (filters.query.trim()) params.set("q", filters.query.trim());
+  if (filters.scope !== "all") params.set("f", filters.scope);
   const search = params.toString();
   return search ? `?${search}` : "";
 }
@@ -50,7 +67,9 @@ export function QuestionExplorer() {
   const [subject, setSubject] = useState<string | null>(null);
   const [topic, setTopic] = useState<string | null>(null);
   const [query, setQuery] = useState("");
+  const [scope, setScope] = useState<HistoryScope>("all");
   const [visible, setVisible] = useState(PAGE);
+  const { history, ready } = useAnswerHistory();
   const searchRef = useRef<HTMLInputElement>(null);
   const hydrated = useRef(false);
 
@@ -62,13 +81,14 @@ export function QuestionExplorer() {
     setSubject(initial.subject);
     setTopic(initial.topic);
     setQuery(initial.query);
+    setScope(initial.scope);
   }, []);
   // mantém a URL sincronizada sem navegar (não queremos remontar a página)
   useEffect(() => {
     if (!hydrated.current) return;
-    const search = filtersToSearch({ subject, topic, query });
+    const search = filtersToSearch({ subject, topic, query, scope });
     window.history.replaceState(null, "", `${window.location.pathname}${search}`);
-  }, [subject, topic, query]);
+  }, [subject, topic, query, scope]);
 
   // atalho "/" para buscar, como em site de documentação
   useEffect(() => {
@@ -96,12 +116,26 @@ export function QuestionExplorer() {
     [subject],
   );
 
-  const results = useMemo(() => {
+  const baseResults = useMemo(() => {
     let scoped: CatalogEntry[] = catalog;
     if (subject) scoped = scoped.filter((entry) => entry.subject === subject);
     if (topic) scoped = scoped.filter((entry) => entry.topic === topic);
     return searchEntries(scoped, query);
   }, [subject, topic, query]);
+
+  const results = useMemo(() => {
+    // antes de ler o localStorage não dá para separar respondidas de pendentes;
+    // mostrar a lista inteira por um instante é melhor que mostrar a errada
+    if (!ready || scope === "all") return baseResults;
+    const filtered = filterByHistory(baseResults, history, scope);
+    return scope === "wrong" ? sortByRecentReview(filtered, history) : filtered;
+  }, [baseResults, history, ready, scope]);
+
+  const counts = useMemo(
+    () => historyCounts(baseResults, history),
+    [baseResults, history],
+  );
+  const stats = useMemo(() => historyStats(history), [history]);
 
   const chooseSubject = useCallback((name: string) => {
     setSubject((current) => (current === name ? null : name));
@@ -112,6 +146,11 @@ export function QuestionExplorer() {
 
   const chooseTopic = useCallback((name: string) => {
     setTopic((current) => (current === name ? null : name));
+    setVisible(PAGE);
+  }, []);
+
+  const chooseScope = useCallback((next: HistoryScope) => {
+    setScope((current) => (current === next ? "all" : next));
     setVisible(PAGE);
   }, []);
 
@@ -127,11 +166,16 @@ export function QuestionExplorer() {
   }, [results, router]);
 
   const shown = results.slice(0, visible);
-  const heading = topic
-    ? topicLabel(topic)
-    : subject
-      ? subject
-      : "Todas as questões";
+  const heading =
+    scope === "wrong"
+      ? "Errei"
+      : scope === "unanswered"
+        ? "Não respondidas"
+        : topic
+          ? topicLabel(topic)
+          : subject
+            ? subject
+            : "Todas as questões";
 
   return (
     <main className="mx-auto w-full max-w-5xl px-4 sm:px-6">
@@ -150,6 +194,8 @@ export function QuestionExplorer() {
           use a prancheta para fazer conta no próprio enunciado.
         </p>
       </section>
+
+      <HistoryProgress stats={stats} total={meta.total} ready={ready} />
 
       <section className="mb-8">
         <div className="relative">
@@ -220,6 +266,29 @@ export function QuestionExplorer() {
             </p>
           </FilterRow>
         )}
+
+        {ready ? (
+          <FilterRow label="Progresso">
+            <Chip
+              label="Todas"
+              active={scope === "all"}
+              onClick={() => chooseScope("all")}
+            />
+            <Chip
+              label="Errei"
+              count={counts.wrong}
+              active={scope === "wrong"}
+              title="Inclui questões em que você revelou o gabarito"
+              onClick={() => chooseScope("wrong")}
+            />
+            <Chip
+              label="Não respondidas"
+              count={counts.unanswered}
+              active={scope === "unanswered"}
+              onClick={() => chooseScope("unanswered")}
+            />
+          </FilterRow>
+        ) : null}
       </section>
 
       <section className="pt-6 pb-4">
@@ -255,9 +324,11 @@ export function QuestionExplorer() {
         {results.length === 0 ? (
           <EmptyState
             query={query}
+            scope={scope}
             onClear={() => {
               setQuery("");
               setTopic(null);
+              setScope("all");
               setVisible(PAGE);
             }}
           />
@@ -308,6 +379,7 @@ function Chip({
   active = false,
   soon = false,
   muted = false,
+  title,
   onClick,
 }: {
   label: string;
@@ -315,6 +387,7 @@ function Chip({
   active?: boolean;
   soon?: boolean;
   muted?: boolean;
+  title?: string;
   onClick?: () => void;
 }) {
   const base =
@@ -337,6 +410,7 @@ function Chip({
       type="button"
       onClick={onClick}
       aria-pressed={active}
+      title={title}
       className={`${base} ${
         active
           ? "border-ink bg-ink text-white"
@@ -404,25 +478,38 @@ function QuestionRow({ entry }: { entry: CatalogEntry }) {
 
 function EmptyState({
   query,
+  scope,
   onClear,
 }: {
   query: string;
+  scope: HistoryScope;
   onClear: () => void;
 }) {
+  const title =
+    scope === "wrong"
+      ? "Nada para revisar"
+      : scope === "unanswered"
+        ? "Tudo respondido"
+        : "Nenhuma questão encontrada";
+  const message =
+    scope === "wrong"
+      ? "Nenhum erro neste filtro. As questões que você errar aparecem aqui."
+      : scope === "unanswered"
+        ? "Todas as questões deste filtro já foram respondidas."
+        : query
+          ? `Nada para “${query}” neste filtro. Tente outra palavra ou limpe o filtro.`
+          : "Tente outra combinação de matéria e assunto.";
+
   return (
     <div className="rounded-xl border border-dashed border-line bg-white/60 px-6 py-14 text-center">
-      <p className="text-[15px] font-medium">Nenhuma questão encontrada</p>
-      <p className="mx-auto mt-1 max-w-sm text-[13px] text-muted">
-        {query
-          ? `Nada para “${query}” neste filtro. Tente outra palavra ou limpe o filtro.`
-          : "Tente outra combinação de matéria e assunto."}
-      </p>
+      <p className="text-[15px] font-medium">{title}</p>
+      <p className="mx-auto mt-1 max-w-sm text-[13px] text-muted">{message}</p>
       <button
         type="button"
         onClick={onClear}
         className="mt-4 rounded-lg border border-line bg-white px-3 py-1.5 text-[13px] font-medium transition hover:border-brand/30 hover:text-brand-dark"
       >
-        Limpar busca
+        {scope === "all" ? "Limpar busca" : "Limpar filtro"}
       </button>
     </div>
   );

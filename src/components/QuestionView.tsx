@@ -4,7 +4,9 @@ import Link from "next/link";
 import { useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { useAnswerHistory } from "@/hooks/useAnswerHistory";
 import { UNCLASSIFIED } from "@/lib/catalog";
+import { formatAttemptDate, lastAttempt, type HistoryRecord } from "@/lib/history";
 import { assetPath } from "@/lib/site";
 import type { Question } from "@/lib/types";
 import { DrawingBoard } from "./DrawingBoard";
@@ -23,13 +25,29 @@ export function QuestionView({
   const [selected, setSelected] = useState<string | null>(null);
   const [revealed, setRevealed] = useState(false);
   const [drawing, setDrawing] = useState(false);
+  const { history, ready, record } = useAnswerHistory();
 
   const answered = selected !== null || revealed;
   const isCorrect = selected !== null && selected === question.correct;
+  const previousRecord = ready ? history[question.id] : undefined;
 
   function choose(letter: string) {
     if (selected) return; // uma tentativa por vez; use "tentar de novo"
     setSelected(letter);
+    record(question.id, {
+      letter,
+      outcome: letter === question.correct ? "correct" : "wrong",
+      at: new Date().toISOString(),
+    });
+  }
+
+  function reveal() {
+    setRevealed(true);
+    record(question.id, {
+      letter: null,
+      outcome: "revealed",
+      at: new Date().toISOString(),
+    });
   }
 
   function reset() {
@@ -118,6 +136,10 @@ export function QuestionView({
             </div>
           ) : null}
 
+          {previousRecord && !answered ? (
+            <PreviousAttempt record={previousRecord} />
+          ) : null}
+
           <ul className="mt-6 space-y-2">
             {question.alternatives.map((alternative) => {
               const isRight = answered && alternative.letter === question.correct;
@@ -182,7 +204,7 @@ export function QuestionView({
             {!answered ? (
               <button
                 type="button"
-                onClick={() => setRevealed(true)}
+                onClick={reveal}
                 className="text-muted underline underline-offset-2 transition hover:text-ink"
               >
                 Ver gabarito
@@ -263,6 +285,37 @@ export function QuestionView({
         />
       ) : null}
     </>
+  );
+}
+
+function PreviousAttempt({ record }: { record: HistoryRecord }) {
+  const attempt = lastAttempt(record);
+  if (!attempt) return null;
+
+  const attempts = record.attempts.length;
+  const label =
+    attempt.outcome === "correct"
+      ? "Você acertou"
+      : attempt.outcome === "wrong"
+        ? "Você errou"
+        : "Você revelou o gabarito";
+  const tone =
+    attempt.outcome === "correct"
+      ? "text-emerald-700"
+      : attempt.outcome === "wrong"
+        ? "text-red-600"
+        : "text-muted";
+
+  return (
+    <p
+      className={`mt-5 rounded-lg border border-line bg-paper px-3 py-2 text-[13px] ${tone}`}
+    >
+      {label} em {formatAttemptDate(attempt.at)}
+      <span className="text-muted">
+        {" "}
+        · {attempts} {attempts === 1 ? "tentativa" : "tentativas"}
+      </span>
+    </p>
   );
 }
 
