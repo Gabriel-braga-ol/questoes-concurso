@@ -3,6 +3,10 @@
 Regras para agentes de IA neste repositório. O README explica o produto; aqui
 ficam comandos, limites e critérios de pronto.
 
+**Antes de alterar qualquer código, leia `README.md` e este `AGENTS.md` até o
+fim.** O README diz o que o produto é e por quê; este arquivo diz como trabalhar
+aqui e o que conta como pronto.
+
 ## Comandos
 
 - `npm run dev` — servidor local em http://localhost:3000.
@@ -77,6 +81,8 @@ SOLID e Clean Code com pragmatismo, traduzidos em regras concretas:
 ## Como trabalhar
 
 - Tarefa ambígua ou que muda arquitetura: pergunte antes.
+- Leia `README.md` e este arquivo antes de mexer no código; em tarefa de dados,
+  leia também o script de ingestão que gera o arquivo afetado.
 - Faça a menor mudança que resolve o problema; não refatore fora do escopo.
 - Não altere dados, configuração ou dependências por conveniência.
 - Ao terminar, diga o que mudou, como verificou e o que ficou em aberto.
