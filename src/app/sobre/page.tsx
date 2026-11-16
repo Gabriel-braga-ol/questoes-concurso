@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { REPO_URL } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: "Sobre",
@@ -91,9 +92,17 @@ export default function AboutPage() {
 
         <h2 className="mt-8 mb-2 text-lg font-semibold text-ink">Contato</h2>
         <p>
-          Este projeto está em desenvolvimento. Sugestões, correções de gabarito
-          ou pedidos de remoção de conteúdo são bem-vindos pelo e-mail{" "}
-          <a href="mailto:contato@myvest.app">contato@myvest.app</a>.
+          Este projeto está em desenvolvimento e o código é aberto. Sugestões,
+          correções de gabarito ou pedidos de remoção de conteúdo são bem-vindos
+          nas{" "}
+          <a
+            href={`${REPO_URL}/issues`}
+            target="_blank"
+            rel="noreferrer noopener"
+          >
+            Issues do repositório
+          </a>
+          , no GitHub.
         </p>
       </div>
     </main>

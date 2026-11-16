@@ -18,6 +18,9 @@ export const BASE_PATH =
 /** endereço canônico publicado, com barra no fim como o resto do site */
 export const SITE_URL = `https://${OWNER.toLowerCase()}.github.io${DEPLOY_BASE_PATH}/`;
 
+/** repositório público: é por ele (Issues) que o contato acontece */
+export const REPO_URL = `https://github.com/${OWNER}/${REPO}`;
+
 /** prefixa um caminho de `public/` para o subdiretório de publicação */
 export function assetPath(src: string) {
   return src.startsWith("/") ? `${BASE_PATH}${src}` : src;

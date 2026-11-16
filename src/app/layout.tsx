@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import Link from "next/link";
-import { SITE_URL } from "@/lib/site";
+import { REPO_URL, SITE_URL } from "@/lib/site";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -107,6 +107,15 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
                 className="underline underline-offset-2 hover:text-ink"
               >
                 enem.dev
+              </a>
+              . Código e correções no{" "}
+              <a
+                href={REPO_URL}
+                target="_blank"
+                rel="noreferrer noopener"
+                className="underline underline-offset-2 hover:text-ink"
+              >
+                GitHub
               </a>
               .
             </p>
