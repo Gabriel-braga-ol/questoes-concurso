@@ -22,7 +22,7 @@ export function normalize(text) {
     .toLowerCase();
 }
 
-const AREA_SUBJECTS = {
+export const AREA_SUBJECTS = {
   matematica: { candidates: ["Matemática"], fallback: "Matemática" },
   "ciencias-natureza": {
     candidates: ["Física", "Química", "Biologia"],
@@ -150,7 +150,7 @@ const SUBJECT_RULES = {
 /* assunto                                                             */
 /* ------------------------------------------------------------------ */
 
-const TOPIC_RULES = {
+export const TOPIC_RULES = {
   Matemática: {
     "Probabilidade e Estatística": [
       "probabilidad", "chanc", "sortei", "dado ", "moeda", "aleatori",
@@ -442,6 +442,9 @@ const TOPIC_RULES = {
     "Filosofia Antiga": [
       "socrat", "platao", "aristotel", "mito da cavern", "estoicism",
       "epicurism", "presocratic",
+    ],
+    "Filosofia Medieval": [
+      "agostinh", "tomas de aquino", "escolastic", "patristic", "medieval",
     ],
     "Filosofia Moderna": [
       "descart", "kant", "locke", "hobbes", "rousseau", "racionalism",

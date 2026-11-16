@@ -11,7 +11,8 @@
     "start": "node scripts/serve-out.mjs",
     "lint": "eslint",
     "typecheck": "next typegen && tsc --noEmit",
-    "ingest": "node scripts/ingest-enem.mjs"
+    "ingest": "node scripts/ingest-enem.mjs",
+    "classify": "node scripts/classify-enem.mjs"
   },
   "dependencies": {
     "@excalidraw/excalidraw": "^0.18.1",
